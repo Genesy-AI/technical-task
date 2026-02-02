@@ -1,0 +1,27 @@
+README.md
+  5237574ddfdfac43 7,26,41-42,51,56-57,59,149,160,171
+frontend/src/App.tsx
+  5237574ddfdfac43 10,14,16
+frontend/index.html
+  5237574ddfdfac43 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.40",
+  "base_commit_sha": "a7a69593cd67f8df0d3767dcb497304446a23510",
+  "prompts": {
+    "5237574ddfdfac43": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5ad52682-2027-4053-a1d0-ac8bdaab55bd",
+        "model": "gpt-5.2-codex"
+      },
+      "human_author": "Oriol <oriol.castro@genesy.ai>",
+      "messages": [],
+      "total_additions": 25,
+      "total_deletions": 17,
+      "accepted_lines": 17,
+      "overriden_lines": 3
+    }
+  }
+}
