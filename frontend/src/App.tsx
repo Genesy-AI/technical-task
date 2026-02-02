@@ -7,13 +7,13 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
-              <a href="https://genesy.ai" target="_blank" className="flex items-center">
+              <a href="https://enginy.ai" target="_blank" className="flex items-center">
                 <img
                   src="https://cdn.prod.website-files.com/674ec82ac8f13332ff5201aa/677eaa5351b3ef0c2418820a_favicon%20256x256.png"
                   className="h-8 w-8 transition-all duration-300 hover:drop-shadow-[0_0_2em_#646cffaa]"
-                  alt="Genesy AI logo"
+                  alt="Enginy AI logo"
                 />
-                <h1 className="ml-3 text-xl font-semibold text-gray-900">TinyGenesy</h1>
+                <h1 className="ml-3 text-xl font-semibold text-gray-900">TinyEnginy</h1>
               </a>
             </div>
           </div>
