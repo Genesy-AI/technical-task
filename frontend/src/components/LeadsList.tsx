@@ -315,9 +315,9 @@ export const LeadsList: FC = () => {
                         <span
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                             lead.gender === 'male'
-                              ? 'bg-blue-100 text-blue-800'
+                              ? 'bg-purple-100 text-purple-800'
                               : lead.gender === 'female'
-                              ? 'bg-pink-100 text-pink-800'
+                              ? 'bg-teal-100 text-teal-800'
                               : 'bg-gray-100 text-gray-800'
                           }`}
                         >
