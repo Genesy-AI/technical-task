@@ -9,19 +9,18 @@ Welcome to the **TinyEnginy** take‑home! This exercise is a condensed version 
 
 ## What you’ll do (at a glance)
 
+These tasks are independent — tackle them in whatever order you consider most important or impactful.
 
-1. Investigate & fix a reported CSV import bug (details below).
-
-2. Implement a new feature (details below).
-
-3. Review an open PR that implements a new feature.
-
-4. Analyze the codebase and propose improvements.
-
+- **Bug fix:** CSV import displays invalid country codes.
+- **Bug fix:** Email verification hangs indefinitely with no feedback.
+- **Feature:** Add new lead data fields (phone number, years at company, LinkedIn).
+- **Feature:** Implement an enrich phone workflow using Temporal.
+- **PR Review:** Review an open pull request from a teammate.
+- **Analysis:** Propose codebase improvements and a technical roadmap.
 
 ## Submission
 
-Please record your screen (and, if possible, your voice) while you work on this task [(opensource tool)](https://cap.so/). We want to see how you collaborate with AI tools, how you reason through trade-offs, and how far you can get within the timebox.
+Please record your screen (and, if possible, your voice) while you work on this task [(opensource tool)](https://cap.so/). We want to see how you collaborate with AI tools, how you reason through trade-offs, and how far you can get within the timebox. Feel free to get comfortable with the project first — set things up, explore the codebase, and understand how it all fits together before you start recording.
 
 The expected work time is around 1 hour. Do not worry if you cannot complete every part of the task. Work in the repository as you see fit, and when you are done, just ping us. We value the time you invest in this task, and we commit to spending a similar amount reviewing it thoroughly. Regardless of the outcome, we’ll provide constructive feedback so you can benefit from the evaluation.
 
@@ -30,15 +29,15 @@ The expected work time is around 1 hour. Do not worry if you cannot complete eve
 
 ### Prerequisites
 
-- **Node.js** (use the version in .nvmrc).
+- **[Node.js](https://nodejs.org/)** (use the version in .nvmrc).
 
-- **pnpm** package manager.
+- **[pnpm](https://pnpm.io/)** package manager.
 
-- **SQLite** (bundled; no separate install required).
+- **[SQLite](https://www.sqlite.org/)** (bundled; no separate install required).
 
-- **Temporal** Workflow management system.
+- **[Temporal](https://docs.temporal.io/)** — Workflow management system.
 
-- **Claude Code** installed locally, with the provided `ANTHROPIC_API_KEY` configured. If you are more comfortable, you can use any other AI coding tool you have access to.
+- **[Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview)** installed locally, with the provided `ANTHROPIC_API_KEY` configured. If you are more comfortable, you can use any other AI coding tool you have access to.
 
 Install tools:
 
@@ -76,7 +75,7 @@ cd backend
 pnpm run dev           # Starts the API server
 ```
 
-When you change the Prisma schema:
+When you change the [Prisma](https://www.prisma.io/docs) schema:
 ```zsh
 pnpm migrate:dev
 ```
@@ -98,29 +97,29 @@ pnpm run dev           # Starts the dev server
 
 ## Task Description
 
-### Bug reported
+### Bug: CSV country codes
 
-When importing from CSV, the country column displays strange characters that do not match valid country codes. I have been using the example CSV file.
+When importing leads from CSV using the example file, the country column displays garbled characters instead of valid country codes.
 
-Some users have also complained that the email verification feature keeps running forever for some cases and does not give any kind of information.
+### Bug: Email verification stalls
 
-### New Feature
+The email verification process hangs indefinitely for some leads and never reports a success or failure outcome.
 
-Some users have mentioned they would like to track more data points for their leads.
-We are adding the following fields: lead’s phone number, years at their current company, and LinkedIn profile.
+### Feature: New lead fields
 
-We want users to be able to:
+Add three new data points for leads: **phone number**, **years at current company**, and **LinkedIn profile URL**.
 
- 1. See the new field in the table of leads
- 2. Manually set those fields using the import from csv feature
- 3. Implement an **enrich phone** process (details below)
- 3. Use the new fields in the message composition
+Users should be able to:
 
-Since the list of fields will continue to grow, we need to improve the UX of the message composition (no design provided).
+ - See these fields in the leads table
+ - Set them via CSV import
+ - Use them in message composition
 
-### Enrich phone
+Since the field list will keep growing, the message composition UX needs to scale accordingly (no design provided).
 
-In order to implement the enrich phone number you should implement a **Temporal workflow** that finds a user’s phone number by querying three providers in sequence:
+### Feature: Enrich phone
+
+Implement a [**Temporal**](https://docs.temporal.io/) workflow that finds a lead's phone number by querying three providers in sequence:
 
 1. Call **Provider One** → if no phone found,  
 2. Call **Provider Two** → if no phone found,  
@@ -178,11 +177,11 @@ Take into account provider rate limits, right now they have unlimited RPS/RPM, h
 
 ### PR review
 
-Review the open PR as if it were from a teammate. Add any inline comments you find necessary and provide a final summary with either an approval or a change-request decision.
+Review the open PR as if it were from a teammate. Leave inline comments where relevant and provide a summary with a clear approve or request-changes decision.
 
 ### Codebase Analysis & Roadmap
 
-Create an `IMPROVEMENTS.md` file as if it was a document in our project management tool.
+Create an `IMPROVEMENTS.md` file as if it were a document in our project management tool.
 
 ## Evaluation
 
