@@ -20,4 +20,5 @@ model lead {
   message     String?
   emailVerified Boolean?
   phoneNumber String?
+  yearsAtCompany Int?
 }
