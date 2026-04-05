@@ -51,6 +51,22 @@ export const LeadsList: FC = () => {
     }
   })
 
+  const enrichPhonesMutation = useMutation({
+    mutationFn: async (ids: number[]) => api.leads.enrichPhones({ leadIds: ids }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['leads', 'getMany'] })
+      setIsEnrichDropdownOpen(false)
+      toast.success(
+        data.enrichedCount === 1
+          ? `Enriched phone for ${data.enrichedCount} lead`
+          : `Enriched phone for ${data.enrichedCount} leads`
+      )
+    },
+    onError: () => {
+      toast.error('Failed to enrich phone numbers. Please try again.')
+    }
+  })
+
   const handleSelectAll = (checked: boolean) => {
     if (checked && leads.data) {
       setSelectedLeads(leads.data.map(lead => lead.id))
@@ -149,13 +165,26 @@ export const LeadsList: FC = () => {
                     </button>
                     <button
                       onClick={() => verifyEmailsMutation.mutate(selectedLeads)}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                      disabled={verifyEmailsMutation.isPending}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <div className="flex items-center">
                         <svg className="mr-3 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12H8m8 0a8 8 0 11-16 0 8 8 0 0116 0zm-8 0V4" />
                         </svg>
-                        Verify Email
+                        {verifyEmailsMutation.isPending ? 'Verifying...' : 'Verify Email'}
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => enrichPhonesMutation.mutate(selectedLeads)}
+                      disabled={enrichPhonesMutation.isPending}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <div className="flex items-center">
+                        <svg className="mr-3 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        {enrichPhonesMutation.isPending ? 'Enriching...' : 'Enrich Phone'}
                       </div>
                     </button>
                     <button

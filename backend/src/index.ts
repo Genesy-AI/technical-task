@@ -320,6 +320,82 @@ app.post('/leads/verify-emails', async (req: Request, res: Response) => {
   }
 })
 
+app.post('/leads/enrich-phones', async (req: Request, res: Response) => {
+  if (!req.body || typeof req.body !== 'object') {
+    return res.status(400).json({ error: 'Request body is required and must be valid JSON' })
+  }
+
+  const { leadIds } = req.body as { leadIds?: number[] }
+
+  if (!Array.isArray(leadIds) || leadIds.length === 0) {
+    return res.status(400).json({ error: 'leadIds must be a non-empty array' })
+  }
+
+  try {
+    const leads = await prisma.lead.findMany({
+      where: { id: { in: leadIds.map((id) => Number(id)) } },
+    })
+
+    if (leads.length === 0) {
+      return res.status(404).json({ error: 'No leads found with the provided IDs' })
+    }
+
+    const connection = await Connection.connect({ address: 'localhost:7233' })
+    const client = new Client({ connection, namespace: 'default' })
+
+    let enrichedCount = 0
+    const results: Array<{ leadId: number; phone: string | null }> = []
+    const errors: Array<{ leadId: number; leadName: string; error: string }> = []
+
+    for (const lead of leads) {
+      const workflowId = `enrich-phone-${lead.id}`
+      try {
+        const input: EnrichPhoneInput = {
+          leadId: lead.id,
+          fullName: `${lead.firstName} ${lead.lastName}`.trim(),
+          email: lead.email,
+        }
+
+        try {
+          await client.workflow.start(enrichPhoneWorkflow, {
+            taskQueue: 'myQueue',
+            workflowId,
+            args: [input],
+          })
+        } catch (err: any) {
+          if (err?.name !== 'WorkflowExecutionAlreadyStartedError') {
+            throw err
+          }
+        }
+
+        const handle = client.workflow.getHandle(workflowId)
+        const phone = await handle.result()
+
+        await prisma.lead.update({
+          where: { id: lead.id },
+          data: { phoneNumber: phone ?? lead.phoneNumber },
+        })
+
+        results.push({ leadId: lead.id, phone })
+        enrichedCount++
+      } catch (error) {
+        errors.push({
+          leadId: lead.id,
+          leadName: `${lead.firstName} ${lead.lastName}`.trim(),
+          error: error instanceof Error ? error.message : 'Unknown error',
+        })
+      }
+    }
+
+    await connection.close()
+
+    res.json({ success: true, enrichedCount, results, errors })
+  } catch (error) {
+    console.error('Error enriching phones:', error)
+    res.status(500).json({ error: 'Failed to enrich phone numbers' })
+  }
+})
+
 app.post('/leads/:id/enrich-phone', async (req: Request, res: Response) => {
   const leadId = Number(req.params.id)
   if (isNaN(leadId)) {
