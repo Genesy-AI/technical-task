@@ -21,4 +21,5 @@ model lead {
   emailVerified Boolean?
   phoneNumber String?
   yearsAtCompany Int?
+  linkedInUrl String?
 }
