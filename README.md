@@ -107,6 +107,8 @@ When importing leads from CSV using the example file, the country column display
 
 The email verification process hangs indefinitely for some leads and never reports a success or failure outcome.
 
+> Torri: The verifyEmail activity in the verifyEmail workflow waits 20 seconds if the email contains the string "jane.smith". Assuming this is simulating a delay and can't be removed, the fastest solution is to raise the startToCloseTimeout value for the workflow to 30 seconds so that the workflow has plenty of time to finish even if the artifical delay is introduced. Doing this means that the workflow succeeds even when the email contains "jane.smith".
+
 ### Feature: New lead fields
 
 Add three new data points for leads: **phone number**, **years at current company**, and **LinkedIn profile URL**.
