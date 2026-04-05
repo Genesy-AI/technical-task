@@ -101,6 +101,8 @@ pnpm run dev           # Starts the dev server
 
 When importing leads from CSV using the example file, the country column displays garbled characters instead of valid country codes.
 
+> Torri: I was unable to reproduce this problem with any of the provided csv files in docs/
+
 ### Bug: Email verification stalls
 
 The email verification process hangs indefinitely for some leads and never reports a success or failure outcome.
