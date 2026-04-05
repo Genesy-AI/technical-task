@@ -1,4 +1,4 @@
-firstName,lastName,email,jobTitle,countryCode,companyName,yearsInRole,phoneNumber
+firstName,lastName,email,jobTitle,countryCode,companyName,yearsAtCompany,phoneNumber
 Iñaki,Álvarez,rodriguezbrian@smith.net,Restaurant manager,ES,Rogers Inc,10,+1-648-901-1274x3620
 Curtis,Monson,curtismonson80@gmail.com,General practice doctor,US,Alexander-Smith,5,
 Curtis,Monson,curtismonson80@gmail.com,General practice doctor,US,Alexander-Smith,5,

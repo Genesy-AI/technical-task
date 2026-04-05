@@ -33,6 +33,9 @@ app.post('/leads', async (req: Request, res: Response) => {
       firstName: String(name),
       lastName: String(lastName),
       email: String(email),
+      phoneNumber: req.body.phoneNumber ? String(req.body.phoneNumber) : null,
+      yearsAtCompany: req.body.yearsAtCompany ? Number(req.body.yearsAtCompany) : null,
+      jobTitle: req.body.jobTitle ? String(req.body.jobTitle) : null,
     },
   })
   res.json(lead)
@@ -229,6 +232,9 @@ app.post('/leads/bulk', async (req: Request, res: Response) => {
             jobTitle: lead.jobTitle ? lead.jobTitle.trim() : null,
             countryCode: lead.countryCode ? lead.countryCode.trim() : null,
             companyName: lead.companyName ? lead.companyName.trim() : null,
+            phoneNumber: lead.phoneNumber ? lead.phoneNumber.trim() : null,
+            yearsAtCompany: lead.yearsAtCompany ? Number(lead.yearsAtCompany) : null,
+            linkedInUrl: lead.linkedInUrl ? lead.linkedInUrl.trim() : null,
           },
         })
         importedCount++

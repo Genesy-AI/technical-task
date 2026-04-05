@@ -51,8 +51,8 @@ John Doe john@example.com`
   })
 
   it('should parse valid CSV with all required fields', () => {
-    const csv = `firstName,lastName,email,jobTitle,countryCode,companyName
-John,Doe,john.doe@example.com,Developer,US,Tech Corp`
+    const csv = `firstName,lastName,email,jobTitle,countryCode,companyName,phoneNumber,yearsAtCompany,linkedInUrl
+John,Doe,john.doe@example.com,Developer,US,Tech Corp,+1234567890,5,https://linkedin.com/in/johndoe`
 
     const result = parseCsv(csv)
 
@@ -64,6 +64,9 @@ John,Doe,john.doe@example.com,Developer,US,Tech Corp`
       jobTitle: 'Developer',
       countryCode: 'US',
       companyName: 'Tech Corp',
+      phoneNumber: '+1234567890',
+      yearsAtCompany: 5,
+      linkedInUrl: 'https://linkedin.com/in/johndoe',
       isValid: true,
       errors: [],
       rowIndex: 2,
@@ -143,15 +146,41 @@ John,Doe,john@example.com,Developer,US,Tech Corp`
   })
 
   it('should handle missing optional fields', () => {
-    const csv = `firstName,lastName,email,jobTitle,countryCode
-John,Doe,john@example.com,,`
+    const csv = `firstName,lastName,email,jobTitle,countryCode,phoneNumber,yearsAtCompany,linkedInUrl
+John,Doe,john@example.com,,,,, `
 
     const result = parseCsv(csv)
 
     expect(result).toHaveLength(1)
     expect(result[0].jobTitle).toBeUndefined()
     expect(result[0].countryCode).toBeUndefined()
+    expect(result[0].phoneNumber).toBeUndefined()
+    expect(result[0].yearsAtCompany).toBeUndefined()
+    expect(result[0].linkedInUrl).toBeUndefined()
     expect(result[0].isValid).toBe(true)
+  })
+
+  it('should parse yearsAtCompany as a number', () => {
+    const csv = `firstName,lastName,email,yearsAtCompany
+John,Doe,john@example.com,3`
+
+    const result = parseCsv(csv)
+
+    expect(result).toHaveLength(1)
+    expect(result[0].yearsAtCompany).toBe(3)
+    expect(typeof result[0].yearsAtCompany).toBe('number')
+  })
+
+  it('should handle case-insensitive headers for new fields', () => {
+    const csv = `firstName,lastName,email,PHONENUMBER,YEARSATCOMPANY,LINKEDINURL
+John,Doe,john@example.com,+44123456,2,https://linkedin.com/in/john`
+
+    const result = parseCsv(csv)
+
+    expect(result).toHaveLength(1)
+    expect(result[0].phoneNumber).toBe('+44123456')
+    expect(result[0].yearsAtCompany).toBe(2)
+    expect(result[0].linkedInUrl).toBe('https://linkedin.com/in/john')
   })
 
   it('should preserve row index correctly', () => {
