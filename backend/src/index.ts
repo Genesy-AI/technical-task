@@ -1,7 +1,8 @@
 import { PrismaClient } from '@prisma/client'
 import express, { Request, Response } from 'express'
 import { Connection, Client } from '@temporalio/client'
-import { verifyEmailWorkflow } from './workflows'
+import { verifyEmailWorkflow, enrichPhoneWorkflow, enrichPhoneStatusQuery } from './workflows'
+import type { EnrichPhoneInput } from './workflows'
 import { generateMessageFromTemplate } from './utils/messageGenerator'
 import { runTemporalWorker } from './worker'
 const prisma = new PrismaClient()
@@ -316,6 +317,93 @@ app.post('/leads/verify-emails', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error verifying emails:', error)
     res.status(500).json({ error: 'Failed to verify emails' })
+  }
+})
+
+app.post('/leads/:id/enrich-phone', async (req: Request, res: Response) => {
+  const leadId = Number(req.params.id)
+  if (isNaN(leadId)) {
+    return res.status(400).json({ error: 'Invalid lead ID' })
+  }
+
+  const lead = await prisma.lead.findUnique({ where: { id: leadId } })
+  if (!lead) {
+    return res.status(404).json({ error: 'Lead not found' })
+  }
+
+  const workflowId = `enrich-phone-${leadId}`
+
+  try {
+    const connection = await Connection.connect({ address: 'localhost:7233' })
+    const client = new Client({ connection, namespace: 'default' })
+
+    const input: EnrichPhoneInput = {
+      leadId,
+      fullName: `${lead.firstName} ${lead.lastName}`.trim(),
+      email: lead.email,
+    }
+
+    // Start the workflow; if one is already running for this lead, attach to it
+    try {
+      await client.workflow.start(enrichPhoneWorkflow, {
+        taskQueue: 'myQueue',
+        workflowId,
+        args: [input],
+      })
+    } catch (err: any) {
+      if (err?.name !== 'WorkflowExecutionAlreadyStartedError') {
+        throw err
+      }
+    }
+
+    // Wait for the result and update the lead
+    const handle = client.workflow.getHandle(workflowId)
+    const phone = await handle.result()
+
+    await prisma.lead.update({
+      where: { id: leadId },
+      data: { phoneNumber: phone ?? lead.phoneNumber },
+    })
+
+    await connection.close()
+
+    res.json({ success: true, phone })
+  } catch (error) {
+    console.error('Error enriching phone:', error)
+    res.status(500).json({ error: 'Failed to enrich phone number' })
+  }
+})
+
+app.get('/leads/:id/enrich-phone/status', async (req: Request, res: Response) => {
+  const leadId = Number(req.params.id)
+  if (isNaN(leadId)) {
+    return res.status(400).json({ error: 'Invalid lead ID' })
+  }
+
+  const workflowId = `enrich-phone-${leadId}`
+
+  try {
+    const connection = await Connection.connect({ address: 'localhost:7233' })
+    const client = new Client({ connection, namespace: 'default' })
+
+    const handle = client.workflow.getHandle(workflowId)
+    const description = await handle.describe()
+    const workflowStatus = description.status.name
+
+    let currentStep: string | null = null
+    if (workflowStatus === 'RUNNING') {
+      currentStep = await handle.query(enrichPhoneStatusQuery)
+    }
+
+    await connection.close()
+
+    res.json({ workflowId, workflowStatus, currentStep })
+  } catch (error: any) {
+    if (error?.name === 'WorkflowNotFoundError') {
+      return res.status(404).json({ error: 'No enrichment workflow found for this lead' })
+    }
+    console.error('Error fetching enrich-phone status:', error)
+    res.status(500).json({ error: 'Failed to fetch workflow status' })
   }
 })
 
