@@ -10,12 +10,15 @@
 
 ## This sprint (2 weeks)
 
+- Add companyWebsite field for us to complete the enrich-phone feature.
+
 - Add secrets manager for credentials.
 
 We would need to decouple the logic of backend/index.ts (too many endpoints/logic)
 - Add a controller layer for HTTP request handling.
 - Add a service layer for business logic.
 - Add an input layer for input validation.
+- Add a mapping layer for DTO to entity types and viceversa.
 
 - Different controllers for CRUD operations related to leads and another for orchestration (verify-emails, bulk ...)
 
