@@ -4,7 +4,7 @@ export async function verifyEmail(email: string): Promise<boolean> {
     }
 
     if (email.includes('jane.smith')) {
-        await new Promise((resolve) => setTimeout(resolve, 20000));
+        return false;
     }
 
     if (/\+/.test(email)) {
