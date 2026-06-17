@@ -10,6 +10,30 @@ interface CsvImportModalProps {
   onClose: () => void
 }
 
+const stripBom = (content: string): string =>
+  content.charCodeAt(0) === 0xfeff ? content.slice(1) : content
+
+const detectEncoding = (bytes: Uint8Array): string => {
+  if (bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
+    return 'utf-8'
+  }
+  if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xfe) {
+    return 'utf-16le'
+  }
+  if (bytes.length >= 2 && bytes[0] === 0xfe && bytes[1] === 0xff) {
+    return 'utf-16be'
+  }
+  return 'utf-8'
+}
+
+const decodeCsvBuffer = (buffer: ArrayBuffer): string => {
+  const bytes = new Uint8Array(buffer)
+  const encoding = detectEncoding(bytes)
+  // TextDecoder strips a leading BOM by default; stripBom guards any decoder that doesn't.
+  const decoded = new TextDecoder(encoding).decode(bytes)
+  return stripBom(decoded)
+}
+
 export const CsvImportModal: FC<CsvImportModalProps> = ({ isOpen, onClose }) => {
   const [csvData, setCsvData] = useState<CsvLead[]>([])
   const [isDragging, setIsDragging] = useState(false)
@@ -52,7 +76,11 @@ export const CsvImportModal: FC<CsvImportModalProps> = ({ isOpen, onClose }) => 
     const reader = new FileReader()
     reader.onload = (e) => {
       try {
-        const content = e.target?.result as string
+        const result = e.target?.result
+        if (!(result instanceof ArrayBuffer)) {
+          throw new Error('Failed to read CSV file')
+        }
+        const content = decodeCsvBuffer(result)
         const parsed = parseCsv(content)
         setCsvData(parsed)
         setIsProcessing(false)
@@ -66,7 +94,7 @@ export const CsvImportModal: FC<CsvImportModalProps> = ({ isOpen, onClose }) => 
       toast.error('Error reading file')
       setIsProcessing(false)
     }
-    reader.readAsText(file)
+    reader.readAsArrayBuffer(file)
   }
 
   const handleDrop = useCallback((e: React.DragEvent) => {
