@@ -16,8 +16,10 @@ export const LeadsList: FC = () => {
     queryKey: ['leads', 'getMany'],
     queryFn: async () => api.leads.getMany(),
     retry: false,
+    refetchInterval: (query) =>
+      query.state.data?.some((lead) => lead.phoneEnrichmentStatus === 'in_progress') ? 2000 : false,
   })
-  
+
 
   const deleteLeadsMutation = useMutation({
     mutationFn: async (ids: number[]) => api.leads.deleteMany({ ids }),
@@ -40,14 +42,60 @@ export const LeadsList: FC = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['leads', 'getMany'] })
       setIsEnrichDropdownOpen(false)
-      toast.success(
-        data.verifiedCount === 1
-          ? `Verified ${data.verifiedCount} email`
-          : `Verified ${data.verifiedCount} emails`
-      )
+
+      if (data.verifiedCount > 0) {
+        toast.success(
+          data.verifiedCount === 1
+            ? `Verified ${data.verifiedCount} email`
+            : `Verified ${data.verifiedCount} emails`
+        )
+      }
+
+      if (data.errors.length > 0) {
+        toast.error(
+          data.errors.length === 1
+            ? `Failed to verify email for ${data.errors[0].leadName}`
+            : `Failed to verify ${data.errors.length} emails`
+        )
+      }
     },
     onError: () => {
       toast.error('Failed to verify emails. Please try again.')
+    }
+  })
+
+  const enrichPhoneMutation = useMutation({
+    mutationFn: async (ids: number[]) => api.leads.enrichPhone({ leadIds: ids }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['leads', 'getMany'] })
+      setIsEnrichDropdownOpen(false)
+
+      if (data.startedCount > 0) {
+        toast.success(
+          data.startedCount === 1
+            ? `Started phone lookup for ${data.startedCount} lead`
+            : `Started phone lookup for ${data.startedCount} leads`
+        )
+      }
+
+      if (data.alreadyInProgressCount > 0) {
+        toast(
+          data.alreadyInProgressCount === 1
+            ? `${data.alreadyInProgressCount} lead already has a lookup in progress`
+            : `${data.alreadyInProgressCount} leads already have a lookup in progress`
+        )
+      }
+
+      if (data.errors.length > 0) {
+        toast.error(
+          data.errors.length === 1
+            ? `Failed to start phone lookup for ${data.errors[0].leadName}`
+            : `Failed to start phone lookup for ${data.errors.length} leads`
+        )
+      }
+    },
+    onError: () => {
+      toast.error('Failed to start phone lookup. Please try again.')
     }
   })
 
@@ -149,13 +197,40 @@ export const LeadsList: FC = () => {
                     </button>
                     <button
                       onClick={() => verifyEmailsMutation.mutate(selectedLeads)}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                      disabled={verifyEmailsMutation.isPending}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       <div className="flex items-center">
-                        <svg className="mr-3 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12H8m8 0a8 8 0 11-16 0 8 8 0 0116 0zm-8 0V4" />
-                        </svg>
-                        Verify Email
+                        {verifyEmailsMutation.isPending ? (
+                          <svg className="animate-spin mr-3 h-4 w-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                        ) : (
+                          <svg className="mr-3 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12H8m8 0a8 8 0 11-16 0 8 8 0 0116 0zm-8 0V4" />
+                          </svg>
+                        )}
+                        {verifyEmailsMutation.isPending ? 'Verifying...' : 'Verify Email'}
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => enrichPhoneMutation.mutate(selectedLeads)}
+                      disabled={enrichPhoneMutation.isPending}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <div className="flex items-center">
+                        {enrichPhoneMutation.isPending ? (
+                          <svg className="animate-spin mr-3 h-4 w-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                        ) : (
+                          <svg className="mr-3 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                          </svg>
+                        )}
+                        {enrichPhoneMutation.isPending ? 'Starting lookup...' : 'Enrich Phone'}
                       </div>
                     </button>
                     <button
@@ -235,6 +310,15 @@ export const LeadsList: FC = () => {
                   Country
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
+                  Phone
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
+                  Years at Company
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
+                  LinkedIn
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
                   Message
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
@@ -274,6 +358,46 @@ export const LeadsList: FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">{lead.countryCode || '-'}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
+                      {lead.phoneEnrichmentStatus === 'in_progress' ? (
+                        <span className="inline-flex items-center text-gray-500">
+                          <svg className="animate-spin mr-1.5 h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Looking up...
+                        </span>
+                      ) : lead.phoneNumber ? (
+                        lead.phoneNumber
+                      ) : lead.phoneEnrichmentStatus === 'not_found' ? (
+                        <span className="text-gray-400">No data found</span>
+                      ) : lead.phoneEnrichmentStatus === 'failed' ? (
+                        <span className="text-red-500">Lookup failed</span>
+                      ) : (
+                        '-'
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{lead.yearsAtCompany ?? '-'}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
+                      {lead.linkedinUrl ? (
+                        <a
+                          href={lead.linkedinUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-500 hover:underline"
+                        >
+                          Profile
+                        </a>
+                      ) : (
+                        '-'
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-900 max-w-xs truncate" title={lead.message || ''}>

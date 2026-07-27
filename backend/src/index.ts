@@ -1,10 +1,9 @@
-import { PrismaClient } from '@prisma/client'
 import express, { Request, Response } from 'express'
-import { Connection, Client } from '@temporalio/client'
-import { verifyEmailWorkflow } from './workflows'
+import { Connection, Client, WorkflowExecutionAlreadyStartedError } from '@temporalio/client'
+import { verifyEmailWorkflow, enrichPhoneWorkflow } from './workflows'
 import { generateMessageFromTemplate } from './utils/messageGenerator'
 import { runTemporalWorker } from './worker'
-const prisma = new PrismaClient()
+import { prisma } from './prismaClient'
 const app = express()
 app.use(express.json())
 
@@ -229,6 +228,11 @@ app.post('/leads/bulk', async (req: Request, res: Response) => {
             jobTitle: lead.jobTitle ? lead.jobTitle.trim() : null,
             countryCode: lead.countryCode ? lead.countryCode.trim() : null,
             companyName: lead.companyName ? lead.companyName.trim() : null,
+            phoneNumber: lead.phoneNumber ? lead.phoneNumber.trim() : null,
+            yearsAtCompany: lead.yearsAtCompany !== undefined && lead.yearsAtCompany !== null
+              ? Number(lead.yearsAtCompany)
+              : null,
+            linkedinUrl: lead.linkedinUrl ? lead.linkedinUrl.trim() : null,
           },
         })
         importedCount++
@@ -273,7 +277,9 @@ app.post('/leads/verify-emails', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'No leads found with the provided IDs' })
     }
 
-    const connection = await Connection.connect({ address: 'localhost:7233' })
+    const connection = await Connection.connect({
+      address: process.env.TEMPORAL_ADDRESS ?? 'localhost:7233',
+    })
     const client = new Client({ connection, namespace: 'default' })
 
     let verifiedCount = 0
@@ -313,8 +319,95 @@ app.post('/leads/verify-emails', async (req: Request, res: Response) => {
   }
 })
 
-app.listen(4000, () => {
-  console.log('Express server is running on port 4000')
+app.post('/leads/enrich-phone', async (req: Request, res: Response) => {
+  if (!req.body || typeof req.body !== 'object') {
+    return res.status(400).json({ error: 'Request body is required and must be valid JSON' })
+  }
+
+  const { leadIds } = req.body as { leadIds?: number[] }
+
+  if (!Array.isArray(leadIds) || leadIds.length === 0) {
+    return res.status(400).json({ error: 'leadIds must be a non-empty array' })
+  }
+
+  try {
+    const leads = await prisma.lead.findMany({
+      where: { id: { in: leadIds.map((id) => Number(id)) } },
+    })
+
+    if (leads.length === 0) {
+      return res.status(404).json({ error: 'No leads found with the provided IDs' })
+    }
+
+    const connection = await Connection.connect({
+      address: process.env.TEMPORAL_ADDRESS ?? 'localhost:7233',
+    })
+    const client = new Client({ connection, namespace: 'default' })
+
+    let startedCount = 0
+    let alreadyInProgressCount = 0
+    const errors: Array<{ leadId: number; leadName: string; error: string }> = []
+
+    for (const lead of leads) {
+      const leadName = `${lead.firstName} ${lead.lastName}`.trim()
+
+      if (lead.phoneEnrichmentStatus === 'in_progress') {
+        alreadyInProgressCount += 1
+        continue
+      }
+
+      try {
+        await prisma.lead.update({
+          where: { id: lead.id },
+          data: { phoneEnrichmentStatus: 'in_progress' },
+        })
+
+        await client.workflow.start(enrichPhoneWorkflow, {
+          taskQueue: 'myQueue',
+          workflowId: `enrich-phone-${lead.id}`,
+          args: [
+            {
+              leadId: lead.id,
+              fullName: leadName,
+              email: lead.email,
+              jobTitle: lead.jobTitle,
+              companyWebsite: lead.companyName,
+            },
+          ],
+        })
+
+        startedCount += 1
+      } catch (error) {
+        if (error instanceof WorkflowExecutionAlreadyStartedError) {
+          alreadyInProgressCount += 1
+          continue
+        }
+
+        await prisma.lead.update({
+          where: { id: lead.id },
+          data: { phoneEnrichmentStatus: 'failed' },
+        })
+
+        errors.push({
+          leadId: lead.id,
+          leadName,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        })
+      }
+    }
+
+    await connection.close()
+
+    res.json({ success: true, startedCount, alreadyInProgressCount, errors })
+  } catch (error) {
+    console.error('Error starting phone enrichment:', error)
+    res.status(500).json({ error: 'Failed to start phone enrichment' })
+  }
+})
+
+const PORT = Number(process.env.PORT) || 4000
+app.listen(PORT, () => {
+  console.log(`Express server is running on port ${PORT}`)
 })
 
 runTemporalWorker().catch((err) => {

@@ -1,4 +1,5 @@
 import Papa from 'papaparse'
+import { isValidCountryCode } from './countryCodes'
 
 export interface CsvLead {
   firstName: string
@@ -7,6 +8,9 @@ export interface CsvLead {
   jobTitle?: string
   countryCode?: string
   companyName?: string
+  phoneNumber?: string
+  yearsAtCompany?: number
+  linkedinUrl?: string
   isValid: boolean
   errors: string[]
   rowIndex: number
@@ -68,10 +72,25 @@ export const parseCsv = (content: string): CsvLead[] => {
           lead.jobTitle = trimmedValue || undefined
           break
         case 'countrycode':
-          lead.countryCode = trimmedValue || undefined
+          lead.countryCode = trimmedValue ? trimmedValue.toUpperCase() : undefined
           break
         case 'companyname':
           lead.companyName = trimmedValue || undefined
+          break
+        case 'phonenumber':
+        case 'phone':
+          lead.phoneNumber = trimmedValue || undefined
+          break
+        case 'yearsatcompany':
+        case 'yearsinrole':
+        case 'yearsincurrentrole':
+          lead.yearsAtCompany = trimmedValue ? Number(trimmedValue) : undefined
+          break
+        case 'linkedin':
+        case 'linkedinurl':
+        case 'linkedinprofile':
+        case 'linkedinprofileurl':
+          lead.linkedinUrl = trimmedValue || undefined
           break
       }
     })
@@ -87,6 +106,14 @@ export const parseCsv = (content: string): CsvLead[] => {
       errors.push('Email is required')
     } else if (!isValidEmail(lead.email)) {
       errors.push('Invalid email format')
+    }
+    if (lead.yearsAtCompany !== undefined && Number.isNaN(lead.yearsAtCompany)) {
+      errors.push('Years at company must be a number')
+      lead.yearsAtCompany = undefined
+    }
+    if (lead.countryCode !== undefined && !isValidCountryCode(lead.countryCode)) {
+      errors.push(`Invalid country code: ${lead.countryCode}`)
+      lead.countryCode = undefined
     }
 
     data.push({

@@ -23,7 +23,10 @@ export const MessageTemplateModal: FC<MessageTemplateModalProps> = ({
     generatedCount: number
     errors: Array<{ leadId: number; leadName: string; error: string }>
   } | null>(null)
+  const [isFieldPickerOpen, setIsFieldPickerOpen] = useState(false)
+  const [fieldSearch, setFieldSearch] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const fieldPickerRef = useRef<HTMLDivElement>(null)
   const queryClient = useQueryClient()
 
   const generateMessagesMutation = useMutation({
@@ -106,7 +109,33 @@ export const MessageTemplateModal: FC<MessageTemplateModalProps> = ({
     }
   }, [isOpen, handleClose])
 
-  const availableFields = ['firstName', 'lastName', 'email', 'jobTitle', 'companyName', 'countryCode']
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (fieldPickerRef.current && !fieldPickerRef.current.contains(e.target as Node)) {
+        setIsFieldPickerOpen(false)
+      }
+    }
+
+    if (isFieldPickerOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isFieldPickerOpen])
+
+  // Grouped so the picker stays usable as more lead fields get added over time.
+  const fieldGroups = [
+    { label: 'Personal', fields: ['firstName', 'lastName', 'email', 'phoneNumber', 'linkedinUrl'] },
+    { label: 'Company', fields: ['jobTitle', 'companyName', 'countryCode', 'yearsAtCompany'] },
+  ]
+
+  const search = fieldSearch.trim().toLowerCase()
+  const filteredGroups = fieldGroups
+    .map((group) => ({
+      ...group,
+      fields: group.fields.filter((field) => field.toLowerCase().includes(search)),
+    }))
+    .filter((group) => group.fields.length > 0)
 
   const insertField = (field: string) => {
     if (textareaRef.current) {
@@ -121,6 +150,8 @@ export const MessageTemplateModal: FC<MessageTemplateModalProps> = ({
         textarea.setSelectionRange(start + field.length + 2, start + field.length + 2)
       }, 0)
     }
+
+    setFieldSearch('')
   }
 
   if (!isOpen) return null
@@ -156,18 +187,54 @@ export const MessageTemplateModal: FC<MessageTemplateModalProps> = ({
                 Message Template
               </label>
               <div className="space-y-3">
-                <div className="flex flex-wrap gap-2">
-                  <span className="text-sm text-gray-600">Insert field:</span>
-                  {availableFields.map((field) => (
-                    <button
-                      key={field}
-                      type="button"
-                      onClick={() => insertField(field)}
-                      className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded hover:bg-blue-200 transition-colors"
-                    >
-                      {`{${field}}`}
-                    </button>
-                  ))}
+                <div className="relative" ref={fieldPickerRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsFieldPickerOpen((open) => !open)}
+                    className="inline-flex items-center px-3 py-1.5 text-sm border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                  >
+                    Insert field
+                    <svg className="ml-1.5 -mr-0.5 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {isFieldPickerOpen && (
+                    <div className="absolute left-0 top-full mt-1 w-64 bg-white rounded-md shadow-lg border border-gray-200 z-10">
+                      <div className="p-2 border-b border-gray-100">
+                        <input
+                          type="text"
+                          autoFocus
+                          value={fieldSearch}
+                          onChange={(e) => setFieldSearch(e.target.value)}
+                          placeholder="Search fields..."
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      <div className="max-h-56 overflow-y-auto py-1">
+                        {filteredGroups.length === 0 && (
+                          <div className="px-3 py-2 text-sm text-gray-500">No matching fields</div>
+                        )}
+                        {filteredGroups.map((group) => (
+                          <div key={group.label}>
+                            <div className="px-3 pt-2 pb-1 text-xs font-medium text-gray-400 uppercase tracking-wider">
+                              {group.label}
+                            </div>
+                            {group.fields.map((field) => (
+                              <button
+                                key={field}
+                                type="button"
+                                onClick={() => insertField(field)}
+                                className="block w-full text-left px-3 py-1.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-800 transition-colors"
+                              >
+                                {`{${field}}`}
+                              </button>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <textarea
                   ref={textareaRef}

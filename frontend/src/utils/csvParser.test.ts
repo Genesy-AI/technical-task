@@ -142,6 +142,26 @@ John,Doe,john@example.com,Developer,US,Tech Corp`
     expect(result[0].jobTitle).toBe('Developer')
   })
 
+  it('should reject invalid country codes', () => {
+    const csv = `firstName,lastName,email,countryCode
+John,Doe,john@example.com,XXX
+Jane,Smith,jane@example.com,12
+Bob,Johnson,bob@example.com,us`
+
+    const result = parseCsv(csv)
+
+    expect(result).toHaveLength(3)
+    expect(result[0].isValid).toBe(false)
+    expect(result[0].errors).toContain('Invalid country code: XXX')
+    expect(result[0].countryCode).toBeUndefined()
+
+    expect(result[1].isValid).toBe(false)
+    expect(result[1].errors).toContain('Invalid country code: 12')
+
+    expect(result[2].isValid).toBe(true)
+    expect(result[2].countryCode).toBe('US')
+  })
+
   it('should handle missing optional fields', () => {
     const csv = `firstName,lastName,email,jobTitle,countryCode
 John,Doe,john@example.com,,`
